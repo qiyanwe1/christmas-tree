@@ -1,0 +1,5 @@
+node_modules/
+out/
+*.log
+*.mp4
+*.webm
