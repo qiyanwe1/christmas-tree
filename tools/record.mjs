@@ -10,11 +10,14 @@ const outDir = join(root, 'out');
 mkdirSync(outDir, { recursive: true });
 
 const DURATION = Number(process.argv[2] || 30); // 录制秒数
+const W = Number(process.argv[3] || 3840);      // 视口宽
+const H = Number(process.argv[4] || 2160);      // 视口高
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ channel: 'chromium' });
 const ctx = await browser.newContext({
-  viewport: { width: 3840, height: 2160 }, // 4K 渲染
-  recordVideo: { dir: outDir, size: { width: 3840, height: 2160 } },
+  viewport: { width: W, height: H },
+  deviceScaleFactor: 2, // 2x 渲染超采样，视频输出更锐利
+  recordVideo: { dir: outDir, size: { width: W, height: H } },
 });
 const page = await ctx.newPage();
 await page.goto('http://127.0.0.1:8787/index.html');

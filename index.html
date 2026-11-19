@@ -120,6 +120,27 @@ for (let i = 0; i < MW_N; i++) {
 // 流星
 let shoots = [], nextShoot = 1.5;
 
+// 卡点彩蛋：S 键烟花绽放、空格键粒子汇聚
+let pull = 0;                        // 1→0 衰减，汇聚后弹回
+const fw = [];
+function burst(x, y) {
+  const n = 130;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * TAU + rand(-0.05, 0.05);   // 圆环排布 + 微扰动
+    const v = rand(150, 430);
+    const life = rand(0.9, 1.8);
+    fw.push({
+      x, y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v * 0.72,
+      life, max: life,
+      size: rand(1.2, 2.8),
+      hueJ: rand(-16, 16),
+      flash: Math.random() < 0.15
+    });
+  }
+}
+
 /* ---------- 渲染 ---------- */
 
 // 树顶方片光尘（绕主星闪烁旋转的小方片）
@@ -324,18 +345,19 @@ function frame(now) {
 
   // 光之精灵（丝带缠绕旋转，正面粒子更大更亮；高度渐变色 + 色相呼吸）
   const tRot = T * 0.55;
+  const shrink = 1 - 0.8 * Math.sin(pull * Math.PI);  // 空格键汇聚：半径先收拢再弹回
   for (let ti = 0; ti < treeN; ti++) {
     const p = tree[ti];
     let a, r, x, y;
     if (p.free) {
       // 萤火光尘：缓慢环绕漂浮
       a = p.ang + T * 0.18;
-      r = p.rr * R;
+      r = p.rr * R * shrink;
       x = cx + Math.sin(a) * r * 0.95;
       y = baseY - p.t * treeH * 0.92 + Math.cos(a) * r * 0.28;
     } else {
       a = p.ang + tRot * p.rotF;
-      r = p.rFac * R;
+      r = p.rFac * R * shrink;
       x = cx + Math.sin(a) * r;
       y = baseY - p.t * treeH + Math.cos(a) * r * 0.32;
     }
@@ -390,6 +412,26 @@ function frame(now) {
     ctx.stroke();
   }
 
+  // 汇聚衰减 + 烟花更新绘制
+  if (pull > 0) pull = Math.max(0, pull - dt / 1.6);
+  for (let i = fw.length - 1; i >= 0; i--) {
+    const f = fw[i];
+    f.life -= dt;
+    if (f.life <= 0) { fw.splice(i, 1); continue; }
+    f.x += f.vx * dt; f.y += f.vy * dt;
+    f.vy += 190 * dt;                       // 重力下坠
+    f.vx *= 0.985; f.vy *= 0.985;           // 空气阻力
+    const lifeF = f.life / f.max;
+    const a = Math.min(1, lifeF * 1.6);
+    const hue = (318 + f.hueJ + drift(T)) % 360;
+    ctx.fillStyle = 'hsla(' + hue.toFixed(1) + ',55%,86%,' + (a * 0.3).toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.size * 3.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = f.flash
+      ? 'rgba(255,255,255,' + a.toFixed(3) + ')'
+      : 'hsla(' + hue.toFixed(1) + ',70%,88%,' + a.toFixed(3) + ')';
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.size, 0, TAU); ctx.fill();
+  }
+
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -409,6 +451,16 @@ cv.addEventListener('touchend', () => {
 cv.addEventListener('dblclick', () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
+});
+
+// 卡点彩蛋按键：S = 一圈烟花绽放，空格 = 粒子短暂汇聚
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyS') {
+    burst(rand(W * 0.25, W * 0.75), rand(H * 0.18, H * 0.45));
+  } else if (e.code === 'Space') {
+    e.preventDefault();
+    pull = 1;
+  }
 });
 </script>
 </body>
